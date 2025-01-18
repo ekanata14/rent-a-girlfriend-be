@@ -11,9 +11,11 @@ import jwt
 from werkzeug.utils import secure_filename
 from flask_bcrypt import check_password_hash
 from functools import wraps
+from flask_cors import CORS
 
 # Initiation Flask
 app = Flask(__name__)
+CORS(app)
 
 # Load DB config
 app.config.from_object(DevelopmentConfig)
@@ -73,7 +75,7 @@ def generate_unique_number():
 # Users
 @app.route('/', methods=['GET'])
 def home():
-    return jsonify({'message': 'Welcome to GF-BF API !! '})
+    return jsonify({'message': 'API RENTAL PACAR '})
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
@@ -861,4 +863,5 @@ def delete_message(id, message_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=3001, debug=True)
+    # app.run(debug=True)
