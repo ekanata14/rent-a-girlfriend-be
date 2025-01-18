@@ -71,6 +71,9 @@ def generate_unique_number():
     return unique_number
 
 # Users
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'message': 'Welcome to GF-BF API !! '})
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
