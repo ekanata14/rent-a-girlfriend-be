@@ -15,7 +15,7 @@ from flask_cors import CORS
 
 # Initiation Flask
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Load DB config
 app.config.from_object(DevelopmentConfig)
@@ -127,6 +127,7 @@ def login():
         cur.execute("SELECT * FROM users WHERE username = %s", (username, ))
         user = cur.fetchone()
         id = user['id']
+        role = user['role']
         if not user:
             return jsonify({'error': 'User not found!!'}), 404
         
@@ -137,6 +138,7 @@ def login():
             token = jwt.encode({
                 'id': id,
                 'username': username,
+                'role' : role,
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
             }, app.config['SECRET_KEY'], algorithm='HS256')
 
