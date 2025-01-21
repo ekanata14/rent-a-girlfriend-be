@@ -73,7 +73,7 @@ def generate_unique_number():
     return unique_number
 
 # Users
-@app.route('/', methods=['GET'])
+@app.route('/api/home', methods=['GET'])
 def home():
     return jsonify({'message': 'API RENTAL PACAR '})
 @app.route('/api/register', methods=['POST'])
@@ -219,6 +219,23 @@ def edit_profile(id):
             'update_phone': new_phone,
             'update_picture': file_path
         }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+    
+
+# ADMIN Get All Users
+@app.route('/api/admin/users', methods=['GET'])
+@token_required
+def get_all_users():
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        cursor.execute("SELECT * FROM users")
+        data = cursor.fetchall()
+        if not data:
+            return jsonify({'message': 'Users not found !! '}), 404
+        return jsonify(data), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
