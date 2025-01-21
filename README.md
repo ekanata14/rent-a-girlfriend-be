@@ -14,6 +14,12 @@ Install Flask Mysql Db
 Install Bcrypt
 - pip3 install bcrypt
 
+Install Flask Bcrypt
+- pip3 install flask_bcrypt
+
+Install Flask Cors
+- pip3 install flask_cors
+
 Install JWT
 - pip3 install jwt (CMIIW)
 
