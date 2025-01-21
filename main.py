@@ -15,7 +15,15 @@ from flask_cors import CORS
 
 # Initiation Flask
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# CORS(app, resources={r"/*": {"origins": ["*"]}})
+# CORS(app, origins="*", methods=["GET", "POST", "PUT", "DELETE"], supports_credentials=True, 
+#     "allowed_headers": ["Content-Type", "Authorization"])
+CORS(app, resources={r"/api/*": {
+    "origins": ["http://localhost:3000"],
+    "methods": ["GET", "POST", "PUT", "DELETE"],
+    "allowed_headers": ["*"],
+    "supports_credentials": True
+}})
 
 # Load DB config
 app.config.from_object(DevelopmentConfig)
@@ -31,7 +39,7 @@ mysql = MySQL(app)
 
 def token_required(func):
     def wrapper(*args, **kwargs):
-        token = request.headers.get('Authorization')
+        token = request.headers.get('Authorization').split(' ')[1]
         try:
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             return func(*args, **kwargs, id=data['id'])
@@ -71,6 +79,30 @@ def generate_unique_number():
     # Combine timestamp with random number
     unique_number = f"{timestamp}{random_number}"
     return unique_number
+
+@app.route('/api/users/total', methods=['GET'])
+def total_users():
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) FROM users")
+        data = cursor.fetchone()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.route('/api/orders/total', methods=['GET'])
+def total_orders():
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) FROM orders")
+        data = cursor.fetchone()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
 
 # Users
 @app.route('/api/home', methods=['GET'])
@@ -168,8 +200,8 @@ def protected(func):
     wrapper.__name__ = func.__name__
     return wrapper
 
-@app.route('/api/edit-profile', methods=['PUT'])
-@token_required
+@app.route('/api/edit-profile', methods=['POST'])
+# @token_required
 def edit_profile(id):
     if 'profile_picture' in request.files:
         file = request['profile_picture']
@@ -227,7 +259,7 @@ def edit_profile(id):
 
 # ADMIN Get All Users
 @app.route('/api/admin/users', methods=['GET'])
-@token_required
+# @token_required
 def get_all_users():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     try:
@@ -241,13 +273,70 @@ def get_all_users():
     finally:
         cursor.close()
 
-# ADMIN DELETE User
-@app.route('/api/admin/user/<string:user_id>', methods=['DELETE'])
-@token_required
-def admin_delete_user(id, user_id):
+#ADMIN Get User By Id
+@app.route('/api/admin/user/<string:id>', methods=['GET'])
+# @token_required
+def get_user_by_id(id):
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     try:
         cursor.execute("SELECT * FROM users WHERE id = %s", (id, ))
+        data = cursor.fetchone()
+        if not data:
+            return jsonify({'message': 'User not found !! '}), 404
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+
+#ADMIN UPDATE User
+@app.route('/api/admin/user/<string:id>', methods=['POST'])
+# @token_required
+def admin_update_user(id):
+    data = request.json
+    new_username = data['username']
+    new_email = data['email']
+    new_age = data['age']
+    new_height = data['height']
+    new_phone = data['mobile_phone']
+    new_role = data['role']
+    new_password = data.get('password')
+
+    if not new_username or not new_email or not new_age or not new_height or not new_phone or not new_role:
+        return jsonify({'error': 'Incomplete data !! '}), 400
+    
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (id, ))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'User not found !! '}), 404
+
+        if new_password:
+            hashed_password = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+            cursor.execute(
+                "UPDATE users SET username = %s, email = %s, age = %s, height = %s, mobile_phone = %s, role = %s, password = %s WHERE id = %s",
+                (new_username, new_email, new_age, new_height, new_phone, new_role, hashed_password.decode(), id)
+            )
+        else:
+            cursor.execute(
+                "UPDATE users SET username = %s, email = %s, age = %s, height = %s, mobile_phone = %s, role = %s WHERE id = %s",
+                (new_username, new_email, new_age, new_height, new_phone, new_role, id)
+            )
+        mysql.connection.commit()
+        return jsonify({'message': 'Data updated successfully !! '}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+
+# ADMIN DELETE User
+@app.route('/api/admin/user/delete/<string:user_id>', methods=['DELETE'])
+# @token_required
+def admin_delete_user(user_id):
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id, ))
         data = cursor.fetchone()
 
         if data['role'] == 1:
@@ -882,5 +971,5 @@ def delete_message(id, message_id):
 
 
 if __name__ == '__main__':
-    app.run(port=3001, debug=True)
+    app.run(port=3002, debug=True)
     # app.run(debug=True)
